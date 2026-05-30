@@ -72,19 +72,26 @@ export function getMissingProfileFields(draft: ProfileDraft): string[] {
 }
 
 export function getProfileDraftCompletionPercentage(draft: ProfileDraft): number {
-  const tracked = [
+  // Percentage tracks REQUIRED fields only — DOB, gender, bio, avatar, home
+  // court are all optional and should never block the gauge from hitting 100%.
+  // The "required rating" slot is satisfied by whichever rating source matches
+  // the chosen skill_source.
+  const ratingForSource =
+    draft.skill_source === 'manual'
+      ? draft.self_rating
+      : draft.skill_source === 'dupr'
+        ? draft.dupr_rating
+        : draft.skill_source === 'assessment'
+          ? draft.app_skill_rating
+          : null
+  const required = [
     draft.display_name,
     draft.visibility,
     draft.skill_source,
-    draft.home_court_id ?? draft.home_location_text,
-    draft.self_rating ?? draft.dupr_rating ?? draft.app_skill_rating,
-    draft.dob ?? draft.age_band,    // either is fine
-    draft.gender,
-    draft.bio,
-    draft.avatar_url,
+    ratingForSource,
   ]
-  const filled = tracked.filter(Boolean).length
-  return Math.round((filled / tracked.length) * 100)
+  const filled = required.filter(Boolean).length
+  return Math.round((filled / required.length) * 100)
 }
 
 // Soft eligibility warnings — never block save, only inform the user. UI

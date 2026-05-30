@@ -21,6 +21,11 @@ export type OrchestratorOutput = AIResponse & {
   usage: { inputTokens: number; outputTokens: number }
 }
 
+// Hard ceiling on a single OpenAI structured-output call. Must stay below the
+// client's 30s fetch timeout (hooks/useAIChat.ts) so the user always sees a
+// proper error message instead of a generic "timed out" from the browser.
+const ORCHESTRATOR_TIMEOUT_MS = 25_000
+
 export async function runOrchestrator(
   input: OrchestratorInput
 ): Promise<Result<OrchestratorOutput>> {
@@ -42,6 +47,9 @@ export async function runOrchestrator(
     { role: 'user' as const, content: input.userMessage },
   ]
 
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), ORCHESTRATOR_TIMEOUT_MS)
+
   try {
     const result = await generateObject({
       model: modelResult.data,
@@ -50,6 +58,7 @@ export async function runOrchestrator(
       schemaDescription: 'Structured response from the Joola AI community assistant',
       system: systemPrompt,
       messages: messages as unknown as ModelMessage[],
+      abortSignal: controller.signal,
     })
 
     logger.info('Orchestrator completed', {
@@ -67,7 +76,16 @@ export async function runOrchestrator(
       },
     })
   } catch (e) {
+    const aborted =
+      (e instanceof DOMException && e.name === 'AbortError') ||
+      (e instanceof Error && /abort/i.test(e.message))
+    if (aborted) {
+      logger.error('Orchestrator timed out', { timeoutMs: ORCHESTRATOR_TIMEOUT_MS })
+      return err('AI took too long to respond — please try again', 'ORCHESTRATOR_TIMEOUT', 504)
+    }
     logger.error('Orchestrator failed', { error: String(e) })
     return err('AI orchestrator failed', 'ORCHESTRATOR_FAILED', 500)
+  } finally {
+    clearTimeout(timeoutId)
   }
 }

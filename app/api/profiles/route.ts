@@ -37,7 +37,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const parsed = CreateProfileSchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+    // 422 — well-formed JSON but a required field is missing or wrongly typed
+    // (e.g. no approvalId, or approvalId is not a UUID). 400 is reserved for
+    // truly malformed input (handled above when JSON.parse fails).
+    return NextResponse.json(
+      { error: 'Missing or invalid required fields', issues: parsed.error.issues },
+      { status: 422 },
+    )
   }
 
   const { approvalId } = parsed.data

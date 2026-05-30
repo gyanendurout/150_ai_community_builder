@@ -332,11 +332,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     if (conversationType === 'profile_creation' && aiResponse.profile_draft_update) {
       const rawUpdate = aiResponse.profile_draft_update
-      // Strip both null (AI did not intend to change this field) and empty
-      // strings (AI occasionally emits "" for fields it isn't touching, which
-      // would silently clear display_name and similar required strings).
+      // Defensive filter — strip ANY value that should be treated as "the AI
+      // did NOT intend to change this field". Historic regressions came from:
+      //   - null    → AI signal for "no change" (per prompt convention)
+      //   - undefined → schema theoretically forbids it but defend anyway
+      //   - ""      → AI sometimes emits "" for skipped string fields
+      //   - whitespace-only strings ("   ") → same as empty for our purposes
+      // Without this, an empty/undefined display_name from the AI silently
+      // wipes the user-provided name on the next turn (BUG-3).
       const draftUpdate = Object.fromEntries(
-        Object.entries(rawUpdate).filter(([, v]) => v !== null && v !== '')
+        Object.entries(rawUpdate).filter(([, v]) => {
+          if (v === null || v === undefined) return false
+          if (typeof v === 'string' && v.trim() === '') return false
+          return true
+        }),
       ) as ProfileDraft
 
       // ── DUPR auto-execute ─────────────────────────────────────────────
@@ -352,7 +361,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           action.kind === 'lookup_by_id'
             ? { kind: 'by_id' as const, dupr_id: action.value }
             : { kind: 'by_name' as const, name: action.value }
-        const result = await duprService.lookup(query)
+        // Cap the lookup so a slow / hung DB query can't hold the entire chat
+        // turn open. A 5s timeout is well above the typical <100ms response,
+        // and falling back to a banner is far better than leaving the user
+        // staring at a spinner.
+        const lookupPromise = duprService.lookup(query)
+        const result = await Promise.race([
+          lookupPromise,
+          new Promise<{ status: 'error'; message: string }>(resolve =>
+            setTimeout(
+              () => resolve({ status: 'error', message: 'DUPR lookup timed out' }),
+              5_000,
+            ),
+          ),
+        ])
         logger.info('Server-executed DUPR lookup', { kind: action.kind, status: result.status })
         if (result.status === 'found') {
           draftUpdate.skill_source = 'dupr'
@@ -396,14 +418,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
     } else if (aiResponse.draft_update) {
       const rawUpdate = aiResponse.draft_update
+      // Same defensive filter as the profile path — protects required event
+      // strings (title, court_name, etc.) from being silently cleared by an
+      // empty/whitespace AI payload.
       const draftUpdate = Object.fromEntries(
-        Object.entries(rawUpdate).filter(([, v]) => v !== null)
+        Object.entries(rawUpdate).filter(([, v]) => {
+          if (v === null || v === undefined) return false
+          if (typeof v === 'string' && v.trim() === '') return false
+          return true
+        }),
       ) as EventDraft
       mergedDraftFields = { ...(currentDraft ?? {}), ...draftUpdate }
       draftCompletionPct = getEventDraftCompletionPercentage(mergedDraftFields as EventDraft)
       serverMissing = getMissingEventFields(mergedDraftFields as EventDraft)
       if (draftId) {
-        await draftService.updateDraft(draftId, draftUpdate)
+        await draftService.updateDraft(draftId, draftUpdate as unknown as Record<string, unknown>)
       } else {
         const newDraftInsert: DraftInsert = {
           user_id: userId,

@@ -33,16 +33,16 @@ export const REQUIRED_EVENT_FIELDS: RequiredEventFields[] = [
 ]
 
 export function getEventDraftCompletionPercentage(draft: EventDraft): number {
-  const total = REQUIRED_EVENT_FIELDS.length + 2 // +court, +description
-  const filled = [
+  // Percentage tracks REQUIRED fields only — court and description are
+  // optional and should never block the gauge from hitting 100%.
+  const required = [
     draft.title,
     draft.start_at,
     draft.event_type,
     draft.player_capacity,
-    draft.court_id ?? draft.location_name,
-    draft.description,
-  ].filter(Boolean).length
-  return Math.round((filled / total) * 100)
+  ]
+  const filled = required.filter(Boolean).length
+  return Math.round((filled / required.length) * 100)
 }
 
 export function getMissingEventFields(draft: EventDraft): string[] {
