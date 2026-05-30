@@ -1,26 +1,84 @@
 @import "tailwindcss";
+@plugin "tailwindcss-animate";
+
+@theme inline {
+  /* ─── Brand Colors ─────────────────────────────────────────────── */
+  --color-primary: #01625B;
+  --color-primary-hover: #027D74;
+  --color-secondary: #027D74;
+  --color-soft: #E8F4F2;
+  --color-cream: #F7F2E8;
+  --color-warm: #FFF8ED;
+  --color-ink: #1F2933;
+  --color-muted: #697586;
+
+  /* ─── shadcn CSS variable mappings (oklch for v4 compatibility) ── */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-muted-bg: var(--muted);
+  --color-muted-fg: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  /* ─── Font ──────────────────────────────────────────────────────── */
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+
+  /* ─── Radius ────────────────────────────────────────────────────── */
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+}
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #1F2933;
+  --card: #ffffff;
+  --card-foreground: #1F2933;
+  --popover: #ffffff;
+  --popover-foreground: #1F2933;
+  --primary: #01625B;
+  --primary-foreground: #ffffff;
+  --secondary: #E8F4F2;
+  --secondary-foreground: #1F2933;
+  --muted: #F7F2E8;
+  --muted-foreground: #697586;
+  --accent: #E8F4F2;
+  --accent-foreground: #1F2933;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #01625B;
+  --radius: 0.625rem;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.dark {
+  --background: #0f1a19;
+  --foreground: #e8f4f2;
+  --card: #1a2b29;
+  --card-foreground: #e8f4f2;
+  --popover: #1a2b29;
+  --popover-foreground: #e8f4f2;
+  --primary: #027D74;
+  --primary-foreground: #ffffff;
+  --secondary: #1a2b29;
+  --secondary-foreground: #e8f4f2;
+  --muted: #1a2b29;
+  --muted-foreground: #8a9aaa;
+  --accent: #1a2b29;
+  --accent-foreground: #e8f4f2;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #2d4443;
+  --input: #2d4443;
+  --ring: #027D74;
 }
